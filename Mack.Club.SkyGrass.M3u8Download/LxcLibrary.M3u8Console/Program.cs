@@ -1,6 +1,7 @@
 ﻿using LxcLibrary.M3u8Download;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -30,7 +31,14 @@ namespace LxcLibrary.M3u8Console
             }
 
             M3u8DownloadTool ffmpeg = new M3u8DownloadTool();
-            ffmpeg.DownloadM3u8(url, video);
+            try
+            {
+                ffmpeg.DownloadM3u8(url, video);
+            }
+            catch (Exception ex)
+            {
+                File.AppendAllLines("Error.log", new List<string> { ex.StackTrace }, Encoding.UTF8);
+            }            
             Console.WriteLine("创建完成，按回车键退出");
             Console.ReadLine();
         }

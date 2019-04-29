@@ -9,6 +9,7 @@ namespace LxcLibrary.M3u8Download
 {
     public class M3u8DownloadTool
     {
+        public const string VersionInfo = "Create By LxcLibrary.M3u8Console v1.0.0";
         public const string PointLine = "#EXT-X-DISCONTINUITY";
         public const string EndPointLine = "#EXT-X-ENDLIST";
         public const string FlagLine = "#EXTINF";
@@ -109,7 +110,7 @@ namespace LxcLibrary.M3u8Download
                 fileLines = fileLines.Concat(item.Value).ToList();
                 fileLines.Add(EndPointLine);
                 File.WriteAllLines(fileName, fileLines, new UTF8Encoding(false));
-                string outline = $"ffmpeg -protocol_whitelist file,tcp,http -i {item.Key} -c copy {item.Key.Replace("m3u8", "mp4")}";
+                string outline = $"ffmpeg -protocol_whitelist file,tcp,http -i {item.Key} -c copy -y {item.Key.Replace("m3u8", "mp4")}";
                 files.Add(outline);
                 mp4Files.Add($"file '{item.Key.Replace("m3u8", "mp4")}'");
             }
@@ -122,7 +123,7 @@ namespace LxcLibrary.M3u8Download
             #endregion
 
             #region 写入文件 批量m3u8.bat            
-            files.Add($"ffmpeg -f concat -i {mp4_file_list_name} -c copy {videoPath}_output_concat.mp4");
+            files.Add($"ffmpeg -f concat -i {mp4_file_list_name} -c copy -y -metadata comment=\"{VersionInfo}\" {videoPath}_output_concat.mp4");
             files.Add("pause");
             File.WriteAllLines(Path.Combine(videoPath, $"{videoPath}_concat_to_mp4.bat"), files, new UTF8Encoding(false));
             #endregion

@@ -1,5 +1,0 @@
-D:\GithubSpace\Mack.Club.SkyGrass.M3u8Download\Mack.Club.SkyGrass.M3u8Download\LxcLibrary.M3u8Download\bin\Debug\LxcLibrary.M3u8Download.dll
-D:\GithubSpace\Mack.Club.SkyGrass.M3u8Download\Mack.Club.SkyGrass.M3u8Download\LxcLibrary.M3u8Download\bin\Debug\LxcLibrary.M3u8Download.pdb
-D:\GithubSpace\Mack.Club.SkyGrass.M3u8Download\Mack.Club.SkyGrass.M3u8Download\LxcLibrary.M3u8Download\obj\Debug\LxcLibrary.M3u8Download.csproj.CoreCompileInputs.cache
-D:\GithubSpace\Mack.Club.SkyGrass.M3u8Download\Mack.Club.SkyGrass.M3u8Download\LxcLibrary.M3u8Download\obj\Debug\LxcLibrary.M3u8Download.dll
-D:\GithubSpace\Mack.Club.SkyGrass.M3u8Download\Mack.Club.SkyGrass.M3u8Download\LxcLibrary.M3u8Download\obj\Debug\LxcLibrary.M3u8Download.pdb
