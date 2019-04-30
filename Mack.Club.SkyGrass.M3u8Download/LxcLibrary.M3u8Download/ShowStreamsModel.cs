@@ -6,6 +6,13 @@ using System.Threading.Tasks;
 
 namespace LxcLibrary.M3u8Download
 {
+    public class Mp4InfoModel
+    {
+        public string name { get; set; }
+        public int width { get; set; }
+        public int height { get; set; }
+    }
+
     public class ShowStreamsModel
     {
         public List<Stream> streams { get; set; }
