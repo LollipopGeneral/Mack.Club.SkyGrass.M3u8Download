@@ -43,57 +43,289 @@ namespace LxcLibrary.M3u8Download
             Uri uri = new Uri(m3u8FilePath);
             string host = $"{uri.Scheme}://{uri.Host}";
 
-            List<string> mp4FileList = ReadFileAndParse(localFilePath, videoPath, host);
+            // List<string> mp4FileList = ReadFileAndParse(localFilePath, videoPath, host);
+            List<string> mp4FileList = ReadFileAndParse(localFilePath, videoPath, uri);
 
             RunBat(videoPath, $"{videoPath}_concat_to_mp4.bat");
+        }
+
+        private List<string> ReadFileAndParse(string localFilePath, string videoPath, Uri uri)
+        {
+            string[] lines = File.ReadAllLines(localFilePath, new UTF8Encoding(false));
+            List<string> headLines = new List<string>();
+            bool hasChangeInfo = false;
+            string host = string.Empty;
+            foreach (var line in lines)
+            {
+                if (line.Contains(".ts"))
+                {
+                    if (!line.StartsWith("http"))
+                    {
+                        if (line.StartsWith("/"))
+                        {
+                            host = $"{uri.Scheme}://{uri.Host}";
+                        }
+                        else
+                        {
+                            host = $"{uri.Scheme}://{uri.Host}{uri.LocalPath.Substring(0, uri.LocalPath.LastIndexOf("/") + 1)}";
+                        }
+                    }
+                    if (hasChangeInfo)
+                    {
+                        break;
+                    }
+                }
+
+                if (line.Equals(PointLine))
+                {                    
+                    hasChangeInfo = true;                    
+                }
+            }
+            int index = 0;
+
+            #region 解析数据
+            Dictionary<string, List<string>> dic = new Dictionary<string, List<string>>();
+            if (hasChangeInfo)
+            {
+                foreach (var line in lines)
+                {
+                    if (line.Equals(EndPointLine))
+                    {
+                        continue;
+                    }
+
+                    if (line.Equals(PointLine))
+                    {
+                        index++;
+                        continue;
+                    }
+
+                    if (index == 0)
+                    {
+                        headLines.Add(line);
+                    }
+                    else
+                    {
+                        string noFlagLine = line;
+                        if (!line.Contains(FlagLine))
+                        {
+                            noFlagLine = $"{host}{line}";
+                        }
+
+                        string fileNameKey = $"{videoPath}_{index}.m3u8";
+                        List<string> fileTempList = null;
+                        if (!dic.ContainsKey(fileNameKey))
+                        {
+                            fileTempList = new List<string>();
+                            fileTempList.Add(noFlagLine);
+                            dic[fileNameKey] = fileTempList;
+                        }
+                        else
+                        {
+                            fileTempList = dic[fileNameKey];
+                            fileTempList.Add(noFlagLine);
+                            dic[fileNameKey] = fileTempList;
+                        }
+                    }
+                }
+            }
+            else
+            {
+                bool isHead = true;
+                foreach (var line in lines)
+                {
+                    if (line.Equals(EndPointLine))
+                    {
+                        continue;
+                    }
+                    if (line.Contains(FlagLine))
+                    {
+                        isHead = false;
+                    }
+
+                    if (isHead)
+                    {
+                        headLines.Add(line);
+                    }
+                    else
+                    {
+                        string noFlagLine = line;
+                        if (!line.Contains(FlagLine))
+                        {
+                            noFlagLine = $"{host}{line}";
+                        }
+
+                        string fileNameKey = $"{videoPath}_{index}.m3u8";
+                        List<string> fileTempList = null;
+                        if (!dic.ContainsKey(fileNameKey))
+                        {
+                            fileTempList = new List<string>();
+                            fileTempList.Add(noFlagLine);
+                            dic[fileNameKey] = fileTempList;
+                        }
+                        else
+                        {
+                            fileTempList = dic[fileNameKey];
+                            fileTempList.Add(noFlagLine);
+                            dic[fileNameKey] = fileTempList;
+                        }
+                    }
+                }
+            }
+            #endregion
+
+            #region 写入文件 
+            List<string> mp4FileList = new List<string>();
+            List<string> jsonFileList = new List<string>();
+            List<string> files = new List<string>();
+            files.Add("copy ..\\ffmpeg.exe .\\");
+            files.Add("copy ..\\ffprobe.exe .\\");
+
+            List<string> mp4Files = new List<string>();
+
+            foreach (var item in dic)
+            {
+                string fileName = Path.Combine(videoPath, item.Key);
+                List<string> fileLines = new List<string>();
+                fileLines = fileLines.Concat(headLines).ToList();
+                fileLines.Add(PointLine);
+                fileLines = fileLines.Concat(item.Value).ToList();
+                fileLines.Add(EndPointLine);
+                File.WriteAllLines(fileName, fileLines, new UTF8Encoding(false));
+                string mp4FileName = item.Key.Replace("m3u8", "mp4");
+                string outline = $"ffmpeg -protocol_whitelist file,tcp,http -i {item.Key} -c copy -y {mp4FileName}";
+                files.Add(outline);
+                string jsonFileName = item.Key.Replace("m3u8", "json");
+                outline = $"ffprobe -v quiet -print_format json -show_format -show_streams {mp4FileName} > {jsonFileName} 2>&1";
+                files.Add(outline);
+                mp4Files.Add($"file '{mp4FileName}'");
+                mp4FileList.Add(mp4FileName);
+                jsonFileList.Add(jsonFileName);
+            }
+            #endregion
+
+            #region 写入文件 fileList.Txt
+            string mp4_file_list_name = $"{videoPath}_mp4_file_list.txt";
+            string mp4_file_list_path = Path.Combine(videoPath, mp4_file_list_name);
+            File.WriteAllLines(mp4_file_list_path, mp4Files, new UTF8Encoding(false));
+            #endregion
+
+            #region 写入文件 批量m3u8.bat            
+            // files.Add($"ffmpeg -f concat -i {mp4_file_list_name} -c copy -y -metadata comment=\"{VersionInfo}\" {videoPath}_output_concat.mp4");           
+            #endregion
+
+            #region 写入回调行信息
+            string jsonListStr = string.Join(",", jsonFileList);
+            string callbackLine = $"..\\LxcLibrary.M3u8Console.exe \"Type_ParseJson\" \"{jsonListStr}\" \"{videoPath}\"";
+            files.Add(callbackLine);
+            files.Add("pause");
+            File.WriteAllLines(Path.Combine(videoPath, $"{videoPath}_concat_to_mp4.bat"), files, new UTF8Encoding(false));
+            #endregion
+
+            return mp4FileList;
         }
 
         private List<string> ReadFileAndParse(string localFilePath, string videoPath, string host)
         {
             string[] lines = File.ReadAllLines(localFilePath, new UTF8Encoding(false));
             List<string> headLines = new List<string>();
+            bool hasChangeInfo = false;
+            foreach (var line in lines)
+            {
+                if (line.Equals(PointLine))
+                {
+                    hasChangeInfo = true;
+                    break;
+                }
+            }
             int index = 0;
 
             #region 解析数据
             Dictionary<string, List<string>> dic = new Dictionary<string, List<string>>();
-            foreach (var line in lines)
+            if (hasChangeInfo)
             {
-                if (line.Equals(EndPointLine))
+                foreach (var line in lines)
                 {
-                    continue;
-                }
-
-                if (line.Equals(PointLine))
-                {
-                    index++;
-                    continue;
-                }
-
-                if (index == 0)
-                {
-                    headLines.Add(line);
-                }
-                else
-                {
-                    string noFlagLine = line;
-                    if (!line.Contains(FlagLine))
+                    if (line.Equals(EndPointLine))
                     {
-                        noFlagLine = $"{host}{line}";
+                        continue;
                     }
 
-                    string fileNameKey = $"{videoPath}_{index}.m3u8";
-                    List<string> fileTempList = null;
-                    if (!dic.ContainsKey(fileNameKey))
+                    if (line.Equals(PointLine))
                     {
-                        fileTempList = new List<string>();
-                        fileTempList.Add(noFlagLine);
-                        dic[fileNameKey] = fileTempList;
+                        index++;
+                        continue;
+                    }
+
+                    if (index == 0)
+                    {
+                        headLines.Add(line);
                     }
                     else
                     {
-                        fileTempList = dic[fileNameKey];
-                        fileTempList.Add(noFlagLine);
-                        dic[fileNameKey] = fileTempList;
+                        string noFlagLine = line;
+                        if (!line.Contains(FlagLine))
+                        {
+                            noFlagLine = $"{host}{line}";
+                        }
+
+                        string fileNameKey = $"{videoPath}_{index}.m3u8";
+                        List<string> fileTempList = null;
+                        if (!dic.ContainsKey(fileNameKey))
+                        {
+                            fileTempList = new List<string>();
+                            fileTempList.Add(noFlagLine);
+                            dic[fileNameKey] = fileTempList;
+                        }
+                        else
+                        {
+                            fileTempList = dic[fileNameKey];
+                            fileTempList.Add(noFlagLine);
+                            dic[fileNameKey] = fileTempList;
+                        }
+                    }
+                }
+            }
+            else
+            {
+                bool isHead = true;
+                foreach (var line in lines)
+                {
+                    if (line.Equals(EndPointLine))
+                    {
+                        continue;
+                    }
+                    if (line.Contains(FlagLine))
+                    {
+                        isHead = false;
+                    }
+
+                    if (isHead)
+                    {
+                        headLines.Add(line);
+                    }
+                    else
+                    {
+                        string noFlagLine = line;
+                        if (!line.Contains(FlagLine))
+                        {
+                            noFlagLine = $"{host}{line}";
+                        }
+
+                        string fileNameKey = $"{videoPath}_{index}.m3u8";
+                        List<string> fileTempList = null;
+                        if (!dic.ContainsKey(fileNameKey))
+                        {
+                            fileTempList = new List<string>();
+                            fileTempList.Add(noFlagLine);
+                            dic[fileNameKey] = fileTempList;
+                        }
+                        else
+                        {
+                            fileTempList = dic[fileNameKey];
+                            fileTempList.Add(noFlagLine);
+                            dic[fileNameKey] = fileTempList;
+                        }
                     }
                 }
             }
