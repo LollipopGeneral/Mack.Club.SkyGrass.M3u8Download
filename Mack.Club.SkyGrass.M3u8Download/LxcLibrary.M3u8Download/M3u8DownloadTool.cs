@@ -193,7 +193,7 @@ namespace LxcLibrary.M3u8Download
                 fileLines.Add(EndPointLine);
                 File.WriteAllLines(fileName, fileLines, new UTF8Encoding(false));
                 string mp4FileName = item.Key.Replace("m3u8", "mp4");
-                string outline = $"ffmpeg -protocol_whitelist file,tcp,http -i {item.Key} -c copy -y {mp4FileName}";
+                string outline = $"ffmpeg -protocol_whitelist file,tcp,http,https,tls -i {item.Key} -c copy -y {mp4FileName}";
                 files.Add(outline);
                 string jsonFileName = item.Key.Replace("m3u8", "json");
                 outline = $"ffprobe -v quiet -print_format json -show_format -show_streams {mp4FileName} > {jsonFileName} 2>&1";
